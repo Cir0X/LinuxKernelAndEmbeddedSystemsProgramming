@@ -1,7 +1,7 @@
 # object files for this project
 objects = $(addprefix $(build_dir)/,fifo-queue.o)
 # name of the executable
-target = $(build_dir)/fifo-queue
+target = $(build_dir)/fifo-queue.out
 
 # directory section
 build_dir:=./build

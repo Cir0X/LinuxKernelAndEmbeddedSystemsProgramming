@@ -1,0 +1,1 @@
+int printm(const char *, ...);

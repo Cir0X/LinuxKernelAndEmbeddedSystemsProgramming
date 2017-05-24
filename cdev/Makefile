@@ -1,8 +1,3 @@
-#
-# Makefile for a kernel module
-#
-# 2017, Wolfhard Prell (wolfhard.prell@gmail.com)
-#
 ifneq ($(KERNELRELEASE),)
 obj-m := register_cdev.o
 

@@ -5,10 +5,13 @@
 #include <linux/types.h>
 #include <linux/fs.h>
 #include <linux/cdev.h>
+#include <asm/io.h>
 
-#define DDVR_NAME "KernelModuleMonitor"
-#define CLASS_NAME "KernelModuleMonitorClass"
-#define DEVICE_NAME "kmm"
+#define KMM_DDVR_NAME "KernelModuleMonitor"
+#define KMM_CLASS_NAME "KernelModuleMonitorClass"
+#define KMM_DEVICE_NAME "kmm"
+
+MODULE_LICENSE("GPL");
 
 static int kmm_open(struct inode *fsde, struct file * mm_entity) {
     printk("KMM: open()\n");
@@ -56,9 +59,22 @@ static struct file_operations kmm_fops = {
 };
 
 dev_t device_number;
-struct cdev * cdev_struct;
-struct class * class_struct;
-struct device * device_struct;
+static struct cdev * cdev_struct = NULL;
+static struct class * class_struct = NULL;
+static struct device * device_struct = NULL;
+
+void cleanup(void) {
+    device_destroy(class_struct, device_number); 
+    if (class_struct != NULL) {
+        class_destroy(class_struct);
+    }
+    if (cdev_struct != NULL) {
+        cdev_del(cdev_struct);
+        kobject_put(&cdev_struct->kobj);
+        cdev_struct = NULL;
+        unregister_chrdev_region(device_number, 1);
+    }
+}
 
 static int start(void) {
     int result;
@@ -75,34 +91,38 @@ static int start(void) {
     cdev_struct = cdev_alloc();
     if (cdev_struct == NULL) {
         printk("KMM: Error allocating cdev\n");
+        cleanup();
         return 0;
     }
 
     cdev_init(cdev_struct, &kmm_fops);
 
-    kobject_set_name(&cdev_struct->kobj, DDVR_NAME);
+    kobject_set_name(&cdev_struct->kobj, KMM_DDVR_NAME);
     cdev_struct->owner = THIS_MODULE;
 
     result = cdev_add(cdev_struct, device_number, 1);
     if (result < 0) {
         printk("KMM: Adding the device failed!\n");
+        cleanup();
         return 0; 
     }
 
-    class_struct = class_create(THIS_MODULE, CLASS_NAME);
+    class_struct = class_create(THIS_MODULE, KMM_CLASS_NAME);
     if (class_struct == NULL) {
         printk("KMM: Error while creating class!\n");
+        cleanup();
         return 0;
     }
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,27)
-    device_struct = device_create(class_struct, NULL, device_number,  DEVICE_NAME);
+    device_struct = device_create(class_struct, NULL, device_number,  KMM_DEVICE_NAME);
 #else
-    device_struct = device_create(class_struct, NULL, device_number, NULL, DEVICE_NAME);
+    device_struct = device_create(class_struct, NULL, device_number, NULL, KMM_DEVICE_NAME);
 #endif
 
     if (IS_ERR(class_struct) || device_struct == NULL) {
         printk("KMM: class registration failed (udev)\n");
+        cleanup();
         return 0;
     }
 
@@ -110,11 +130,7 @@ static int start(void) {
 }
 
 static void end(void) {
-    if (cdev_struct != NULL) {
-        cdev_del(cdev_struct);
-        unregister_chrdev_region(device_number, 1);
-        /*class_destroy();*/
-    }
+    cleanup();
 }
 
 module_init(start);

@@ -1,6 +1,7 @@
 #include <linux/module.h>
 #include <linux/version.h>
 #include <linux/init.h>
+#include <linux/device.h>
 #include <linux/types.h>
 #include <linux/fs.h>
 #include <linux/cdev.h>
@@ -10,47 +11,56 @@
 #define DEVICE_NAME "kmm"
 
 static int kmm_open(struct inode *fsde, struct file * mm_entity) {
+    printk("KMM: open()\n");
     return 0;
 }
 
 static int kmm_close(struct inode *fsde, struct file * mm_entity) {
+    printk("KMM: close()\n");
     return 0;
 }
 
-static ssize_t kmm_read(struct inode *fsde, void *buffer, size_t count, loff_t *long_offset) {
-    return NULL;
+static ssize_t kmm_read(struct file *fsde, char *buffer, size_t count, loff_t *long_offset) {
+    printk("KMM: read()\n");
+    return count;
 }
 
-static ssize_t kmm_write(int fd, const void *buffer, size_t count, loff_t *long_offset) {
-    return NULL;
+static ssize_t kmm_write(struct file *fsde, const char *buffer, size_t count, loff_t *long_offset) {
+    printk("KMM: write()\n");
+    return count;
 }
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,36);
-static int kmm_ioctl(struct inode * fsdev, struct file * mm_entity, unsigned int cmd) {}
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,36)
+static int kmm_ioctl(struct inode * fsdev, struct file * mm_entity, unsigned int cmd) {
+    printk("KMM: ioctl()\n");
+    return 0;
+}
 #else
-static long kmm_ioctl(struct file * mm_entitiy, unsigned int cmd, unsigned long arg) {}
+static long kmm_ioctl(struct file * mm_entitiy, unsigned int cmd, unsigned long arg) {
+    printk("KMM: ioctl()\n");
+    return 0l;
+}
 #endif
 
 static struct file_operations kmm_fops = {
     .owner = THIS_MODULE,
     .open = kmm_open,
     .release = kmm_close,
-    .write = kmm_write,
     .read = kmm_read,
+    .write = kmm_write,
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,36)
     .ioctl = kmm_ioctl,
 #else
-    .unlocked_ioctl = kmm_ioclt,
+    .unlocked_ioctl = kmm_ioctl,
 #endif
 };
 
+dev_t device_number;
 struct cdev * cdev_struct;
+struct class * class_struct;
+struct device * device_struct;
 
 static int start(void) {
-    dev_t device_number;
-    struct class * class_struct;
-    struct device * device_struct;
-
     int result;
     int maj;
     int min;
@@ -70,7 +80,7 @@ static int start(void) {
 
     cdev_init(cdev_struct, &kmm_fops);
 
-    kobject_set_name(cdev_struct->kobj, DDVR_NAME);
+    kobject_set_name(&cdev_struct->kobj, DDVR_NAME);
     cdev_struct->owner = THIS_MODULE;
 
     result = cdev_add(cdev_struct, device_number, 1);
@@ -100,7 +110,11 @@ static int start(void) {
 }
 
 static void end(void) {
-    cdev_del(cdev_struct);
+    if (cdev_struct != NULL) {
+        cdev_del(cdev_struct);
+        unregister_chrdev_region(device_number, 1);
+        /*class_destroy();*/
+    }
 }
 
 module_init(start);

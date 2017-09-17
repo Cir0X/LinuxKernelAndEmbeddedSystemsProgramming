@@ -238,5 +238,5 @@ void kmm_exit(void) {
     cleanup();
 }
 
-// module_init(kmm_init);
-// module_exit(kmm_exit);
+module_init(kmm_init);
+module_exit(kmm_exit);

@@ -238,5 +238,8 @@ void kmm_exit(void) {
     cleanup();
 }
 
+EXPORT_SYMBOL_GPL(printm);
+
+
 module_init(kmm_init);
 module_exit(kmm_exit);

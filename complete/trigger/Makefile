@@ -1,6 +1,5 @@
 ifneq ($(KERNELRELEASE),)
-obj-m := kmm_tst.o
-kmm_tst-objs := wq.o kmm.o
+obj-m := kmm_trigger.o
 
 else
 KDIR := /lib/modules/$(shell uname -r)/build
